@@ -55,7 +55,14 @@ datalens-apt/
 
 
 ---
+📌 Planificación y metodología
 
+El proyecto se desarrolla con la metodología ágil Scrum, trabajando en sprints de 2 semanas.
+
+Scrum Master: Joaquín
+
+Product Owner: Lucas
+---
 ⚙️ Instalación y ejecución
 Clonar el repositorio
 ```bash
@@ -86,13 +93,6 @@ Crear archivo .env en backend/:
 MONGO_URI=mongodb+srv://<usuario>:<password>@cluster.mongodb.net/datalens
 JWT_SECRET=changeme
 PORT=3000
-📌 Planificación y metodología
-
-El proyecto se desarrolla con la metodología ágil Scrum, trabajando en sprints de 2 semanas.
-
-Scrum Master: Joaquín
-
-Product Owner: Lucas
 
 Herramientas de gestión: GitHub Projects / Trello
 👥 Autores
