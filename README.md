@@ -62,7 +62,12 @@ El proyecto se desarrolla con la metodología ágil Scrum, trabajando en sprints
 Scrum Master: Joaquín
 
 Product Owner: Lucas
----
+👥 Autores
+
+Joaquín Navarro – Backend, Machine Learning, Scrum Master
+
+Lucas [Apellido] – Frontend, Visualización, Product Owner
+
 ⚙️ Instalación y ejecución
 Clonar el repositorio
 ```bash
@@ -95,8 +100,3 @@ JWT_SECRET=changeme
 PORT=3000
 
 Herramientas de gestión: GitHub Projects / Trello
-👥 Autores
-
-Joaquín Navarro – Backend, Machine Learning, Scrum Master
-
-Lucas [Apellido] – Frontend, Visualización, Product Owner
