@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-multipart
+motor
+pymongo
+gridfs
+python-dotenv
+pandas
+pyjwt
