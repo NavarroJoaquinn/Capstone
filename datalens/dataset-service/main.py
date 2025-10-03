@@ -4,7 +4,11 @@ from db import init_mongo, close_mongo
 from routers import datasets_routes
 
 load_dotenv()
-app = FastAPI(title="dataset-service")
+app = FastAPI(
+    title="dataset-service",
+    swagger_ui_parameters={"persistAuthorization": True},
+)
+
 
 @app.on_event("startup")
 async def _startup():
