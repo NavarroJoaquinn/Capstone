@@ -1,0 +1,22 @@
+# --- Core FastAPI stack ---
+fastapi==0.112.2
+uvicorn[standard]==0.30.6
+python-dotenv==1.0.1
+
+# --- MongoDB / Async driver ---
+motor==3.5.1
+pymongo==4.8.0
+
+# --- Auth / Seguridad ---
+PyJWT==2.9.0
+passlib[bcrypt]==1.7.4
+
+# --- Data processing / ML ---
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.2
+joblib==1.4.2
+
+# --- Tipado y utilidades ---
+pydantic==2.8.2
+pydantic-settings==2.3.3
