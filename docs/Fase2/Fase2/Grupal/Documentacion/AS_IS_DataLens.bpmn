@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             id="Defs_ASIS"
+             targetNamespace="http://datalens/as_is">
+  <process id="Process_ASIS" name="AS-IS: Proceso actual PYME" isExecutable="false">
+    <laneSet id="LaneSet_ASIS">
+      <lane id="Lane_PYME" name="Dueño / Empleado PYME">
+        <flowNodeRef>StartEvent_ASIS</flowNodeRef>
+        <flowNodeRef>Task_Excel</flowNodeRef>
+        <flowNodeRef>Task_Consolidate</flowNodeRef>
+        <flowNodeRef>Task_Analyze</flowNodeRef>
+        <flowNodeRef>Task_Report</flowNodeRef>
+        <flowNodeRef>EndEvent_ASIS</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="StartEvent_ASIS" name="Inicio"/>
+    <task id="Task_Excel" name="Registrar ventas en Excel / CSV"/>
+    <task id="Task_Consolidate" name="Consolidar planillas manualmente"/>
+    <task id="Task_Analyze" name="Crear gráficos básicos en Excel"/>
+    <task id="Task_Report" name="Generar reporte (tardío)"/>
+    <endEvent id="EndEvent_ASIS" name="Fin"/>
+    <sequenceFlow id="Flow1" sourceRef="StartEvent_ASIS" targetRef="Task_Excel"/>
+    <sequenceFlow id="Flow2" sourceRef="Task_Excel" targetRef="Task_Consolidate"/>
+    <sequenceFlow id="Flow3" sourceRef="Task_Consolidate" targetRef="Task_Analyze"/>
+    <sequenceFlow id="Flow4" sourceRef="Task_Analyze" targetRef="Task_Report"/>
+    <sequenceFlow id="Flow5" sourceRef="Task_Report" targetRef="EndEvent_ASIS"/>
+  </process>
+</definitions>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             id="Defs_TOBE"
+             targetNamespace="http://datalens/to_be">
+  <process id="Process_TOBE" name="TO-BE: Proceso futuro con DataLens" isExecutable="false">
+    <laneSet id="LaneSet_TOBE">
+      <lane id="Lane_User" name="Dueño PYME">
+        <flowNodeRef>StartEvent_TOBE</flowNodeRef>
+        <flowNodeRef>Task_Upload</flowNodeRef>
+        <flowNodeRef>Task_View</flowNodeRef>
+        <flowNodeRef>Task_Export</flowNodeRef>
+        <flowNodeRef>EndEvent_TOBE</flowNodeRef>
+      </lane>
+      <lane id="Lane_System" name="Sistema DataLens (AWS)">
+        <flowNodeRef>Task_ETL</flowNodeRef>
+        <flowNodeRef>Task_DB</flowNodeRef>
+        <flowNodeRef>Task_AI</flowNodeRef>
+        <flowNodeRef>Task_Sync</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="StartEvent_TOBE" name="Inicio"/>
+    <task id="Task_Upload" name="Subir CSV a la App (cero configuración)"/>
+    <task id="Task_View" name="Ver dashboards (ventas, ticket, top productos)"/>
+    <task id="Task_Export" name="Exportar reportes PDF/Excel"/>
+    <endEvent id="EndEvent_TOBE" name="Fin"/>
+    <task id="Task_ETL" name="Validar y limpiar datos (automático)"/>
+    <task id="Task_DB" name="Guardar en BD central (Aurora PostgreSQL)"/>
+    <task id="Task_AI" name="Generar predicciones y alertas (IA)"/>
+    <task id="Task_Sync" name="Sincronizar para acceso offline"/>
+    <sequenceFlow id="TFlow1" sourceRef="StartEvent_TOBE" targetRef="Task_Upload"/>
+    <sequenceFlow id="TFlow2" sourceRef="Task_Upload" targetRef="Task_ETL"/>
+    <sequenceFlow id="TFlow3" sourceRef="Task_ETL" targetRef="Task_DB"/>
+    <sequenceFlow id="TFlow4" sourceRef="Task_DB" targetRef="Task_View"/>
+    <sequenceFlow id="TFlow5" sourceRef="Task_View" targetRef="Task_AI"/>
+    <sequenceFlow id="TFlow6" sourceRef="Task_AI" targetRef="Task_Export"/>
+    <sequenceFlow id="TFlow7" sourceRef="Task_Export" targetRef="EndEvent_TOBE"/>
+    <sequenceFlow id="TFlow8" sourceRef="Task_DB" targetRef="Task_Sync"/>
+    <sequenceFlow id="TFlow9" sourceRef="Task_Sync" targetRef="Task_View"/>
+  </process>
+</definitions>
