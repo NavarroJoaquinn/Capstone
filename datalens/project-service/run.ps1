@@ -1,24 +1,20 @@
-param([switch]$RecreateVenv=$false,[int]$Port=8003)
-Set-Location $PSScriptRoot
+param(
+    [switch]$RecreateVenv = $false,
+    [int]$Port = 8003
+)
 
-$pythonCmd="python"
-try {
-    $py = & py -0p 2>$null
-    if ($py -match "3.12") {
-        $pythonCmd = "py -3.12"
-    }
-} catch {}
+Set-Location $PSScriptRoot
 
 if ($RecreateVenv -or -not (Test-Path ".venv")) {
     if (Test-Path ".venv") {
         Remove-Item -Recurse -Force ".venv"
     }
-    Invoke-Expression "$pythonCmd -m venv .venv"
+    py -3.12 -m venv .venv
 }
 
 . .\.venv\Scripts\Activate.ps1
 
-python -m pip install -U pip
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python -m pip install -U email-validator
-python -m uvicorn main:app --reload --reload-dir . --port $Port
+
+uvicorn main:app --reload --port $Port

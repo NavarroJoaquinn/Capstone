@@ -1,5 +1,13 @@
 {
+  "scripts": {
+    "dev:frontend": "cd datalens-frontend && npm run dev",
+    "dev:auth": "powershell -Command \"cd datalens/auth-service; ./run.ps1\"",
+    "dev:dataset": "powershell -Command \"cd datalens/dataset-service; ./run.ps1\"",
+    "dev:projects": "powershell -Command \"cd datalens/project-service; ./run.ps1\"",
+    "dev:all": "concurrently \"npm run dev:auth\" \"npm run dev:dataset\" \"npm run dev:projects\" \"npm run dev:frontend\""
+  },
   "dependencies": {
-    "axios": "^1.13.2"
+    "axios": "^1.13.2",
+    "concurrently": "^9.2.1"
   }
 }

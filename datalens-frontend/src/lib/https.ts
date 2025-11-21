@@ -1,39 +1,50 @@
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 
-// === BASE URLs según microservicio ===
-const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || "http://localhost:8000";
-const DATASET_URL = process.env.NEXT_PUBLIC_DATASET_URL || "http://localhost:8001";
-const PROJECT_URL = process.env.NEXT_PUBLIC_PROJECT_URL || "http://localhost:8003";
-
-// === Helper para crear instancia con interceptores ===
-function createClient(baseURL: string) {
-  const instance = axios.create({
-    baseURL,
-    headers: { "Content-Type": "application/json" },
-  });
-
+// Helper para adjuntar el token JWT desde localStorage
+const withAuth = (instance: AxiosInstance) => {
   instance.interceptors.request.use((config) => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
       if (token) {
+        config.headers = config.headers ?? {};
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
     return config;
   });
-
-  instance.interceptors.response.use(
-    (res) => res,
-    (err) => {
-      console.error("[HTTP Error]", err.response?.data || err.message);
-      return Promise.reject(err);
-    }
-  );
-
   return instance;
-}
+};
 
-// === Instancias separadas ===
-export const authHttp = createClient(AUTH_URL);
-export const datasetHttp = createClient(DATASET_URL);
-export const projectHttp = createClient(PROJECT_URL);
+// URLs base de cada microservicio (puedes ajustarlas o moverlas a .env)
+const AUTH_BASE_URL =
+  process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ?? "http://localhost:8000";
+const DATASET_BASE_URL =
+  process.env.NEXT_PUBLIC_DATASET_SERVICE_URL ?? "http://localhost:8001";
+const PROJECT_BASE_URL =
+  process.env.NEXT_PUBLIC_PROJECT_SERVICE_URL ?? "http://localhost:8003";
+const ANALYTICS_BASE_URL =
+  process.env.NEXT_PUBLIC_ANALYTICS_SERVICE_URL ?? "http://localhost:8004";
+
+// Instancias HTTP
+export const authHttp = axios.create({
+  baseURL: AUTH_BASE_URL,
+});
+
+// Estos sí necesitan siempre el token
+export const datasetHttp = withAuth(
+  axios.create({
+    baseURL: DATASET_BASE_URL,
+  })
+);
+
+export const projectHttp = withAuth(
+  axios.create({
+    baseURL: PROJECT_BASE_URL,
+  })
+);
+
+export const analyticsHttp = withAuth(
+  axios.create({
+    baseURL: ANALYTICS_BASE_URL,
+  })
+);

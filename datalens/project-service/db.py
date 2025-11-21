@@ -15,7 +15,10 @@ async def init_mongo():
     db = mongo_client[mongo_db]
 
     projects_col = db["projects"]
-    print("MongoDB connected (project-service)")
+    print("[DB] project-service conectado")
 
 async def close_mongo():
-    mongo_client.close()
+    global mongo_client
+    if mongo_client:
+        mongo_client.close()
+        print("[DB] project-service cerró conexión Mongo")

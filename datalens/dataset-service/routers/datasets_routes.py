@@ -1,95 +1,241 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends
-from typing import Optional
-from bson import ObjectId
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from datetime import datetime
+from bson import ObjectId
+from typing import List, Optional
 import pandas as pd
+import numpy as np
 import io
+import db
 
-import db as mongo
-from utils.security import current_user_creds  # 👈 nuevo
+from schemas import DatasetOut
+from utils.auth import get_current_user
+
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
-def oid(id_str: str) -> ObjectId:
-    try:
-        return ObjectId(id_str)
-    except Exception:
-        raise HTTPException(status_code=400, detail="dataset_id inválido")
 
-@router.post("/upload")
+# ============================================================
+# 1. UPLOAD DATASET
+# ============================================================
+
+@router.post("/upload", response_model=DatasetOut)
 async def upload_dataset(
     file: UploadFile = File(...),
-    user_payload: dict = Depends(current_user_creds),  # 👈 inyecta usuario desde el Bearer
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
+    user=Depends(get_current_user),
 ):
-    user_email = user_payload["sub"]
+    user_email = user["sub"]
 
-    # 2) Validaciones básicas del archivo
-    max_mb = int(mongo.os.getenv("MAX_UPLOAD_MB", "50"))
-    if not file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Solo se aceptan archivos .csv")
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos CSV")
 
     content = await file.read()
-    size_mb = len(content) / (1024 * 1024)
-    if size_mb > max_mb:
-        raise HTTPException(status_code=400, detail=f"Archivo supera {max_mb}MB")
 
-    # 3) Parsear CSV
     try:
-        df_head = pd.read_csv(io.BytesIO(content), nrows=50)
-        columns = df_head.columns.tolist()
-        row_count = content.count(b"\n")
-        if row_count > 0:
-            row_count -= 1
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"CSV inválido: {e}")
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception:
+        raise HTTPException(400, "El archivo no es un CSV válido")
 
-    # 4) Guardar archivo en GridFS
-    try:
-        file_id = mongo.fs_bucket.upload_from_stream(
-            file.filename,
-            io.BytesIO(content),
-            metadata={"uploaded_by": user_email, "size_mb": round(size_mb, 2)},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error guardando en GridFS: {e}")
+    # Guardar archivo en GridFS
+    file_id = db.fs_bucket.upload_from_stream(file.filename, io.BytesIO(content))
 
-    # 5) Crear documento en datasets
-    doc = {
+    dataset_doc = {
         "user_email": user_email,
         "name": file.filename,
+        "description": description,
+        "tags": tags.split(",") if tags else [],
         "status": "ready",
-        "row_count": row_count,
-        "columns": columns,
+        "row_count": len(df),
+        "columns": list(df.columns),
+        "size_bytes": len(content),
         "uploaded_at": datetime.utcnow(),
-        "storage": {"type": "gridfs", "file_id": file_id},
-        "tags": [],
+        "storage": {
+            "type": "gridfs",
+            "file_id": str(file_id),
+        },
     }
 
-    res = await mongo.datasets_col.insert_one(doc)
-    doc["_id"] = str(res.inserted_id)
-    if "storage" in doc and "file_id" in doc["storage"]:
-        doc["storage"]["file_id"] = str(doc["storage"]["file_id"])  # 👈 fija la indentación
+    result = await db.datasets_col.insert_one(dataset_doc)
+    dataset_doc["_id"] = str(result.inserted_id)
 
-    return {"ok": True, "dataset": doc}
+    return DatasetOut(**dataset_doc)
 
-@router.get("")
-async def list_datasets(user_payload: dict = Depends(current_user_creds)):
-    cursor = mongo.datasets_col.find({"user_email": user_payload["sub"]}).sort("uploaded_at", -1)
-    data = []
-    async for d in cursor:
+
+# ============================================================
+# 2. LISTAR DATASETS DEL USUARIO
+# ============================================================
+
+@router.get("/", response_model=List[DatasetOut])
+async def list_datasets(user=Depends(get_current_user)):
+    user_email = user["sub"]
+
+    docs = await db.datasets_col.find({"user_email": user_email}).to_list(None)
+
+    for d in docs:
         d["_id"] = str(d["_id"])
-        if "storage" in d and "file_id" in d["storage"]:
-            d["storage"]["file_id"] = str(d["storage"]["file_id"])
-        data.append(d)
-    return {"ok": True, "datasets": data}
-
-@router.get("/{dataset_id}")
-async def get_dataset(dataset_id: str, user_payload: dict = Depends(current_user_creds)):
-    d = await mongo.datasets_col.find_one({"_id": oid(dataset_id), "user_email": user_payload["sub"]})
-    if not d:
-        raise HTTPException(status_code=404, detail="Dataset no encontrado")
-
-    d["_id"] = str(d["_id"])
-    if "storage" in d and "file_id" in d["storage"]:
         d["storage"]["file_id"] = str(d["storage"]["file_id"])
-    return {"ok": True, "dataset": d}
+
+    return [DatasetOut(**d) for d in docs]
+
+
+# ============================================================
+# 3. OBTENER DATASET POR ID
+# ============================================================
+
+@router.get("/{dataset_id}", response_model=DatasetOut)
+async def get_dataset(dataset_id: str, user=Depends(get_current_user)):
+    user_email = user["sub"]
+
+    doc = await db.datasets_col.find_one({"_id": ObjectId(dataset_id)})
+    if not doc:
+        raise HTTPException(404, "Dataset no encontrado")
+
+    if doc["user_email"] != user_email:
+        raise HTTPException(403, "No tienes permiso para ver este dataset")
+
+    doc["_id"] = str(doc["_id"])
+    doc["storage"]["file_id"] = str(doc["storage"]["file_id"])
+
+    return DatasetOut(**doc)
+
+
+# ============================================================
+# 4. ELIMINAR DATASET
+# ============================================================
+
+@router.delete("/{dataset_id}")
+async def delete_dataset(dataset_id: str, user=Depends(get_current_user)):
+    user_email = user["sub"]
+
+    doc = await db.datasets_col.find_one({"_id": ObjectId(dataset_id)})
+    if not doc:
+        raise HTTPException(404, "Dataset no encontrado")
+
+    if doc["user_email"] != user_email:
+        raise HTTPException(403, "No puedes eliminar este dataset")
+
+    file_id = ObjectId(doc["storage"]["file_id"])
+    db.fs_bucket.delete(file_id)
+
+    await db.datasets_col.delete_one({"_id": ObjectId(dataset_id)})
+
+    return {"deleted": True, "dataset_id": dataset_id}
+
+
+# ============================================================
+# 5. DESCARGAR DATASET COMPLETO
+# ============================================================
+
+@router.get("/{dataset_id}/download")
+async def download_dataset(dataset_id: str, user=Depends(get_current_user)):
+    user_email = user["sub"]
+
+    doc = await db.datasets_col.find_one({"_id": ObjectId(dataset_id)})
+    if not doc:
+        raise HTTPException(404, "Dataset no encontrado")
+
+    if doc["user_email"] != user_email:
+        raise HTTPException(403, "No tienes permiso para este dataset")
+
+    file_id = ObjectId(doc["storage"]["file_id"])
+    stream = db.fs_bucket.open_download_stream(file_id)
+
+    return StreamingResponse(
+        stream,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={doc['name']}"},
+    )
+
+
+# ============================================================
+# 6. PREVIEW DE 50 FILAS
+# ============================================================
+
+@router.get("/{dataset_id}/preview")
+async def preview_dataset(dataset_id: str, user=Depends(get_current_user)):
+    user_email = user["sub"]
+
+    doc = await db.datasets_col.find_one({"_id": ObjectId(dataset_id)})
+    if not doc:
+        raise HTTPException(404, "Dataset no encontrado")
+
+    if doc["user_email"] != user_email:
+        raise HTTPException(403, "No tienes permiso")
+
+    file_id = ObjectId(doc["storage"]["file_id"])
+    stream = db.fs_bucket.open_download_stream(file_id)
+
+    file_bytes = stream.read()
+
+    df = pd.read_csv(io.BytesIO(file_bytes))
+
+    df = df.replace([np.nan, np.inf, -np.inf], None)
+
+    return {
+        "columns": list(df.columns),
+        "preview": df.head(50).to_dict(orient="records"),
+        "row_count": doc.get("row_count"),
+    }
+
+
+# ============================================================
+# 7. UPDATE METADATA
+# ============================================================
+
+@router.patch("/{dataset_id}", response_model=DatasetOut)
+async def update_dataset(
+    dataset_id: str,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    tags: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    user_email = user["sub"]
+
+    update = {}
+    if name: update["name"] = name
+    if description: update["description"] = description
+    if tags: update["tags"] = tags.split(",")
+
+    if not update:
+        raise HTTPException(400, "No se enviaron campos para actualizar")
+
+    doc = await db.datasets_col.find_one({"_id": ObjectId(dataset_id)})
+    if not doc:
+        raise HTTPException(404, "Dataset no encontrado")
+
+    if doc["user_email"] != user_email:
+        raise HTTPException(403, "No tienes permiso")
+
+    await db.datasets_col.update_one({"_id": doc["_id"]}, {"$set": update})
+
+    doc.update(update)
+    doc["_id"] = str(doc["_id"])
+    doc["storage"]["file_id"] = str(doc["storage"]["file_id"])
+
+    return DatasetOut(**doc)
+
+
+# ============================================================
+# 8. SEARCH DATASETS
+# ============================================================
+
+@router.get("/search/q", response_model=List[DatasetOut])
+async def search_datasets(q: str, user=Depends(get_current_user)):
+    user_email = user["sub"]
+
+    docs = await db.datasets_col.find({
+        "user_email": user_email,
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"tags": {"$regex": q, "$options": "i"}},
+        ]
+    }).to_list(None)
+
+    for d in docs:
+        d["_id"] = str(d["_id"])
+        d["storage"]["file_id"] = str(d["storage"]["file_id"])
+
+    return [DatasetOut(**d) for d in docs]

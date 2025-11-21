@@ -1,12 +1,17 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { authService } from "@/services/authService";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,11 +19,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Aquí más adelante conectaremos con el auth-service
-      console.log("Intentando login:", { email, password });
-      alert("Inicio de sesión simulado ✅");
-    } catch (err) {
-      setError("Error al iniciar sesión");
+      const res = await authService.login({ email, password });
+
+      // Guardar token
+      const token = res.data.access_token;
+      localStorage.setItem("token", token);
+
+      // Ir aa la pagina principal
+      router.push("/");
+    } catch (err: any) {
+      console.error(err);
+
+      const backendMessage =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        "Credenciales incorrectas";
+
+      setError(backendMessage);
     } finally {
       setLoading(false);
     }
@@ -38,10 +55,10 @@ export default function LoginPage() {
           <label className="text-sm opacity-80">Email</label>
           <input
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-3 py-2 rounded bg-zinc-800 outline-none"
             required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
@@ -49,10 +66,10 @@ export default function LoginPage() {
           <label className="text-sm opacity-80">Contraseña</label>
           <input
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             className="w-full px-3 py-2 rounded bg-zinc-800 outline-none"
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
