@@ -8,7 +8,9 @@ interface Props {
 export default function DatasetSelector({ datasets, onSelect }: Props) {
   return (
     <div className="mb-4">
-      <label className="text-sm text-zinc-400 block mb-1">Seleccionar Dataset</label>
+      <label className="text-sm text-zinc-400 block mb-1">
+        Seleccionar Dataset
+      </label>
 
       <select
         className="w-full bg-zinc-800 text-white p-2 rounded border border-zinc-700"
@@ -19,7 +21,7 @@ export default function DatasetSelector({ datasets, onSelect }: Props) {
 
         {datasets.map((d) => (
           <option key={d._id} value={d._id}>
-            {d.name ?? "Sin nombre"}
+            {d.name || "Sin nombre"}
           </option>
         ))}
       </select>

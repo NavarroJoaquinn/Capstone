@@ -4,10 +4,10 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50 flex flex-col justify-center items-center text-center p-8">
       <h1 className="text-4xl font-bold mb-4">
-        Bienvenido a <span className="text-blue-500">DataLens</span>
+        Bienvenido a <span className="text-blue-500">DataLens Analytics</span>
       </h1>
       <p className="text-zinc-400 max-w-lg mb-8">
-        DataLens es una plataforma de análisis inteligente que te permite
+        DataLens Analytics es una plataforma de análisis inteligente que te permite
         subir, explorar y visualizar tus datasets con facilidad.
       </p>
 

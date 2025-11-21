@@ -1,99 +1,83 @@
 "use client";
 
-import { useState } from "react";
-
-export interface DualColumnSelectorProps {
+interface Props {
   available: string[];
   selected: string[];
-  onChange: (newSelected: string[]) => void;
+  onChange: (cols: string[]) => void;
 }
 
 export default function DualColumnSelector({
   available,
   selected,
   onChange,
-}: DualColumnSelectorProps) {
-  const [leftSelected, setLeftSelected] = useState<string[]>([]);
-  const [rightSelected, setRightSelected] = useState<string[]>([]);
-
-  // Mover columnas → derecha (seleccionadas)
-  const moveRight = () => {
-    const updated = [...selected, ...leftSelected.filter((c) => !selected.includes(c))];
-    onChange(updated);
-    setLeftSelected([]);
+}: Props) {
+  // Mover de disponibles → seleccionadas
+  const addColumn = (col: string) => {
+    if (selected.includes(col)) return;
+    onChange([...selected, col]);
   };
 
-  // Mover columnas → izquierda (disponibles)
-  const moveLeft = () => {
-    const updated = selected.filter((col) => !rightSelected.includes(col));
-    onChange(updated);
-    setRightSelected([]);
+  // Mover de seleccionadas → disponibles
+  const removeColumn = (col: string) => {
+    onChange(selected.filter((c) => c !== col));
   };
-
-  const availableClean = available.filter((col) => !selected.includes(col));
 
   return (
-    <div className="grid grid-cols-3 gap-4 mt-4 p-4 bg-zinc-900 rounded-lg border border-zinc-700">
+    <div className="flex items-center justify-center gap-6">
 
-      {/* COLUMNA IZQUIERDA */}
-      <div>
-        <h3 className="text-gray-300 font-semibold mb-2">Disponibles</h3>
-        <div className="h-64 overflow-auto border border-zinc-700 rounded bg-zinc-800">
-          {availableClean.map((col) => (
-            <div key={col} className="px-3 py-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={leftSelected.includes(col)}
-                onChange={() =>
-                  setLeftSelected((prev) =>
-                    prev.includes(col)
-                      ? prev.filter((x) => x !== col)
-                      : [...prev, col]
-                  )
-                }
-              />
-              <span className="text-gray-200">{col}</span>
-            </div>
-          ))}
+      {/* DISPONIBLES */}
+      <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800 w-40">
+        <h4 className="text-sm text-zinc-400 mb-2">Disponibles</h4>
+
+        <div className="max-h-64 overflow-auto flex flex-col gap-1">
+          {available
+            .filter((c) => !selected.includes(c))
+            .map((col) => (
+              <button
+                key={col}
+                onClick={() => addColumn(col)}
+                className="w-full text-left px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-sm"
+              >
+                {col}
+              </button>
+            ))}
         </div>
       </div>
 
-      {/* BOTONES */}
-      <div className="flex flex-col justify-center items-center gap-4">
+      {/* FLECHAS */}
+      <div className="flex flex-col gap-4">
         <button
-          onClick={moveRight}
-          className="px-4 py-2 w-32 bg-green-700 hover:bg-green-600 text-white rounded"
+          className="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded"
+          onClick={() => {
+            // mueve todo
+            const remaining = available.filter((c) => !selected.includes(c));
+            onChange([...selected, ...remaining]);
+          }}
         >
           ➜
         </button>
 
         <button
-          onClick={moveLeft}
-          className="px-4 py-2 w-32 bg-red-700 hover:bg-red-600 text-white rounded"
+          className="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded"
+          onClick={() => onChange([])}
         >
-          ←
+          ✖
         </button>
       </div>
 
-      {/* COLUMNA DERECHA */}
-      <div>
-        <h3 className="text-gray-300 font-semibold mb-2">Seleccionadas</h3>
-        <div className="h-64 overflow-auto border border-zinc-700 rounded bg-zinc-800">
+      {/* SELECCIONADAS */}
+      <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800 w-40">
+        <h4 className="text-sm text-zinc-400 mb-2">Seleccionadas</h4>
+
+        <div className="max-h-64 overflow-auto flex flex-col gap-1">
           {selected.map((col) => (
-            <div key={col} className="px-3 py-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={rightSelected.includes(col)}
-                onChange={() =>
-                  setRightSelected((prev) =>
-                    prev.includes(col)
-                      ? prev.filter((x) => x !== col)
-                      : [...prev, col]
-                  )
-                }
-              />
-              <span className="text-gray-200">{col}</span>
-            </div>
+            <button
+              key={col}
+              onClick={() => removeColumn(col)}
+              className="w-full text-left px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-sm"
+            >
+              {col}
+            </button>
           ))}
         </div>
       </div>

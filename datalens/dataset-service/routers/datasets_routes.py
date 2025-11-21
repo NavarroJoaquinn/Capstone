@@ -8,6 +8,7 @@ import numpy as np
 import io
 import db
 
+from bson.errors import InvalidId
 from schemas import DatasetOut
 from utils.auth import get_current_user
 
@@ -132,7 +133,17 @@ async def delete_dataset(dataset_id: str, user=Depends(get_current_user)):
 async def download_dataset(dataset_id: str, user=Depends(get_current_user)):
     user_email = user["sub"]
 
-    doc = await db.datasets_col.find_one({"_id": ObjectId(dataset_id)})
+    # --- VALIDAR QUE dataset_id SEA ObjectId ---
+    try:
+        oid = ObjectId(dataset_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El dataset_id '{dataset_id}' no es válido. Debe ser un ObjectId."
+        )
+
+    # Buscar dataset
+    doc = await db.datasets_col.find_one({"_id": oid})
     if not doc:
         raise HTTPException(404, "Dataset no encontrado")
 

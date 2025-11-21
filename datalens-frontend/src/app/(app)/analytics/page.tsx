@@ -1,118 +1,231 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+import DatasetStep from "@/components/analytics/DatasetStep";
+import ColumnsStep from "@/components/analytics/ColumnsStep";
+import ConfirmColumnsStep from "@/components/analytics/ConfirmColumnsStep";
+import VisualizationStep from "@/components/analytics/VisualizationStep";
+import PlotView from "@/components/analytics/PlotView";
+
 import { datasetService } from "@/services/datasetService";
 import { analyticsService } from "@/services/analyticsService";
 
 export default function AnalyticsPage() {
-  const [datasets, setDatasets] = useState<any[]>([]);
-  const [selectedDataset, setSelectedDataset] = useState<string>("");
-  const [confirmedDataset, setConfirmedDataset] = useState<string | null>(null);
-  const [columns, setColumns] = useState<string[]>([]);
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+    const searchParams = useSearchParams();
+    const datasetFromQuery = searchParams.get("dataset");
 
-  useEffect(() => {
-    async function load() {
-      const res = await datasetService.list();
-      setDatasets(res.data);
-    }
-    load();
-  }, []);
+    // ========= ESTADOS =========
+    const [step, setStep] = useState(1);
 
-  const confirmDataset = async () => {
-    if (!selectedDataset) return;
-    setLoading(true);
+    const [datasets, setDatasets] = useState<any[]>([]);
+    const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
 
-    const res = await analyticsService.basic(selectedDataset);
-    setColumns(res.data.columns);
-    setConfirmedDataset(selectedDataset);
+    const [columns, setColumns] = useState<string[]>([]);
+    const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+    const [confirmedColumns, setConfirmedColumns] = useState<string[]>([]);
 
-    setLoading(false);
-  };
+    const [semanticTypes, setSemanticTypes] = useState<Record<string, string>>({});
+    const [visualizationType, setVisualizationType] = useState<"histogram" | "piechart" | "heatmap" | null>(null);
+    const [plotData, setPlotData] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
 
-  return (
-    <div className="flex flex-col items-center mt-20 text-white">
-      <h1 className="text-4xl font-bold mb-12">Analíticas del Dataset</h1>
+    // ========= 1) CARGAR DATASETS =========
+    useEffect(() => {
+        async function load() {
+            try {
+                const res = await datasetService.list();
+                setDatasets(res.data);
 
-      {/* --- SELECTOR DE DATASET --- */}
-      {!confirmedDataset && (
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg w-[500px] shadow-lg">
-          <label className="text-sm text-gray-300">Seleccionar Dataset</label>
+                if (datasetFromQuery) {
+                    setSelectedDataset(datasetFromQuery);
 
-          <select
-            className="w-full p-2 rounded bg-zinc-800 border border-zinc-700 mt-2"
-            value={selectedDataset}
-            onChange={(e) => setSelectedDataset(e.target.value)}
-          >
-            <option value="">-- Seleccionar --</option>
+                    const preview = await datasetService.preview(datasetFromQuery);
+                    setColumns(preview.data.columns ?? []);
 
-            {datasets.map((ds) => (
-              <option key={ds._id} value={ds._id}>
-                {ds.filename || "Dataset sin nombre"}
-              </option>
-            ))}
-          </select>
+                    const sem = await analyticsService.semanticTypes(datasetFromQuery);
+                    setSemanticTypes(sem.data.semantic_types || {});
+                }
+            } catch (err) {
+                console.error("Error cargando datasets:", err);
+            }
+        }
+        load();
+    }, [datasetFromQuery]);
 
-          <button
-            onClick={confirmDataset}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-500 p-2 rounded"
-          >
-            Confirmar Dataset
-          </button>
+    // ========= CAMBIO DE DATASET =========
+    const handleDatasetSelect = async (id: string) => {
+        setSelectedDataset(id);
+        setSelectedColumns([]);
+        setConfirmedColumns([]);
+        setVisualizationType(null);
+        setPlotData(null);
+
+        try {
+            const previewRes = await datasetService.preview(id);
+            setColumns(previewRes.data.columns ?? []);
+
+            const sem = await analyticsService.semanticTypes(id);
+            setSemanticTypes(sem.data.semantic_types || {});
+        } catch (err) {
+            console.error("Error cargando preview / semantic types:", err);
+        }
+    };
+
+    // ========= CONFIRMAR COLUMNAS =========
+    const handleConfirmColumns = () => {
+        if (selectedColumns.length === 0) {
+            alert("Debes seleccionar al menos una columna.");
+            return;
+        }
+        setConfirmedColumns([...selectedColumns]);
+        setStep(4);
+    };
+
+    // ========= EJECUTAR VISUALIZACIÓN =========
+    const runVisualization = async (type: "histogram" | "piechart" | "heatmap") => {
+        if (!selectedDataset) {
+            alert("Primero selecciona un dataset.");
+            return;
+        }
+
+        setVisualizationType(type);
+        setLoading(true);
+
+        let response;
+
+        try {
+            if (type === "histogram") {
+                response = await analyticsService.histogram(
+                    selectedDataset,
+                    confirmedColumns[0]
+                );
+
+            } else if (type === "piechart") {
+                response = await analyticsService.pie(
+                    selectedDataset,
+                    confirmedColumns[0]
+                );
+
+            } else if (type === "heatmap") {
+                response = await analyticsService.heatmap(selectedDataset);
+            }
+
+            if (!response) {
+                alert("No se recibió respuesta del servidor.");
+                return;
+            }
+
+            setPlotData(response.data);
+
+        } catch (err: any) {
+            console.error("Error generando visualización:", err);
+
+            const msg =
+                err?.response?.data?.detail ||
+                err?.response?.data?.message ||
+                err?.message ||
+                "Error generando visualización.";
+
+            alert(msg);
+
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ========= RENDER DE PASO ACTUAL =========
+    const renderStep = () => {
+        switch (step) {
+            case 1:
+                return (
+                    <DatasetStep
+                        datasets={datasets}
+                        selectedDataset={selectedDataset}
+                        onSelect={handleDatasetSelect}
+                    />
+                );
+            case 2:
+                return (
+                    <ColumnsStep
+                        columns={columns}
+                        selectedColumns={selectedColumns}
+                        onChange={setSelectedColumns}
+                    />
+                );
+            case 3:
+                return (
+                    <ConfirmColumnsStep
+                        selectedColumns={selectedColumns}
+                        semanticTypes={semanticTypes}
+                        onConfirm={handleConfirmColumns}
+                    />
+                );
+            case 4:
+                return (
+                    <VisualizationStep
+                        selectedColumns={confirmedColumns}
+                        onVisualize={runVisualization}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
+
+    // ========= RENDER PRINCIPAL =========
+    return (
+        <div className="p-10 text-white">
+            <h1 className="text-4xl font-bold mb-10">Analíticas del Dataset</h1>
+
+            <div className="mb-6">
+                <p className="text-lg">
+                    Paso <span className="font-bold">{step}</span> de 4
+                </p>
+            </div>
+
+            {renderStep()}
+
+            {/* Navegación entre pasos */}
+            <div className="flex justify-between mt-10 max-w-3xl">
+                <button
+                    disabled={step === 1}
+                    onClick={() => setStep((s) => Math.max(1, s - 1))}
+                    className={`px-6 py-3 rounded bg-zinc-800 hover:bg-zinc-700 ${step === 1 ? "opacity-40 cursor-not-allowed" : ""
+                        }`}
+                >
+                    ← Anterior
+                </button>
+
+                <button
+                    disabled={
+                        (step === 1 && !selectedDataset) ||
+                        (step === 2 && selectedColumns.length === 0) ||
+                        step === 4
+                    }
+                    onClick={() => setStep((s) => Math.min(4, s + 1))}
+                    className={`px-6 py-3 rounded bg-blue-600 hover:bg-blue-500 ${(step === 1 && !selectedDataset) ||
+                        (step === 2 && selectedColumns.length === 0) ||
+                        step === 4
+                        ? "opacity-40 cursor-not-allowed"
+                        : ""
+                        }`}
+                >
+                    Siguiente →
+                </button>
+            </div>
+
+            {/* Resultado del gráfico */}
+            {loading && (
+                <p className="mt-10 text-gray-400">Generando gráfico...</p>
+            )}
+
+            {plotData && visualizationType && (
+                <div className="mt-10">
+                    <PlotView type={visualizationType} data={plotData} />
+                </div>
+            )}
         </div>
-      )}
-
-      {/* --- SI EL DATASET FUE CONFIRMADO --- */}
-      {confirmedDataset && (
-        <>
-          <h2 className="text-2xl mt-10 mb-4">
-            Dataset seleccionado: <span className="text-blue-400">{confirmedDataset}</span>
-          </h2>
-
-          {/* Acciones */}
-          <div className="grid grid-cols-3 gap-4 mt-6">
-            <button
-              onClick={async () => {
-                const r = await analyticsService.basic(confirmedDataset);
-                setResult(r.data);
-              }}
-              className="bg-blue-600 hover:bg-blue-500 p-4 rounded"
-            >
-              Análisis Básico
-            </button>
-
-            <button
-              onClick={async () => {
-                const col = columns[0];
-                if (!col) return;
-                const r = await analyticsService.valueCounts(confirmedDataset, col);
-                setResult(r.data);
-              }}
-              className="bg-purple-600 hover:bg-purple-500 p-4 rounded"
-            >
-              Frecuencias
-            </button>
-
-            <button
-              onClick={async () => {
-                const r = await analyticsService.correlation(confirmedDataset);
-                setResult(r.data);
-              }}
-              className="bg-teal-600 hover:bg-teal-500 p-4 rounded"
-            >
-              Correlación
-            </button>
-          </div>
-
-          {/* Resultado */}
-          {result && (
-            <pre className="bg-zinc-900 mt-10 p-6 rounded-lg border border-zinc-800 w-[70%] whitespace-pre-wrap">
-              {JSON.stringify(result, null, 2)}
-            </pre>
-          )}
-        </>
-      )}
-    </div>
-  );
+    );
 }

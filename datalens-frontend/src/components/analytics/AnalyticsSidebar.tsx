@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import DualColumnSelector from "./DualColumnSelector";
 import DatasetSelector from "./DatasetSelector";
 import { FiMenu, FiBarChart2, FiHash, FiGrid } from "react-icons/fi";
 
@@ -10,7 +9,7 @@ interface Props {
   columns: string[];
   selectedColumns: string[];
   onDatasetSelect: (id: string) => void;
-  onColumnChange: (cols: string[]) => void;
+  onColumnChange: (cols: string[]) => void;   // ⬅️ ESTA FALTABA
   onRun: (type: string) => void;
 }
 
@@ -19,7 +18,6 @@ export default function AnalyticsSidebar({
   columns,
   selectedColumns,
   onDatasetSelect,
-  onColumnChange,
   onRun,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
@@ -45,48 +43,38 @@ export default function AnalyticsSidebar({
           {/* Selector de dataset */}
           <DatasetSelector datasets={datasets} onSelect={onDatasetSelect} />
 
-          {/* Column Selector */}
+          {/* Acciones */}
           {columns.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm text-zinc-400 mb-2">Columnas</h3>
-              <DualColumnSelector
-                available={columns}
-                selected={selectedColumns}
-                onChange={onColumnChange}
-              />
+            <div className="mt-6 flex flex-col gap-3 pb-10">
+              <button
+                onClick={() => onRun("basic")}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded flex items-center gap-2"
+              >
+                <FiGrid />
+                Análisis Básico
+              </button>
+
+              <button
+                onClick={() => onRun("value_counts")}
+                className="w-full bg-purple-600 hover:bg-purple-500 text-white p-2 rounded flex items-center gap-2"
+              >
+                <FiHash />
+                Frecuencias
+              </button>
+
+              <button
+                onClick={() => onRun("correlation")}
+                className="w-full bg-teal-600 hover:bg-teal-500 text-white p-2 rounded flex items-center gap-2"
+              >
+                <FiBarChart2 />
+                Correlación
+              </button>
             </div>
           )}
-
-          {/* Acciones */}
-          <div className="mt-6 flex flex-col gap-3 pb-10">
-            <button
-              onClick={() => onRun("basic")}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded flex items-center gap-2"
-            >
-              <FiGrid />
-              Análisis Básico
-            </button>
-
-            <button
-              onClick={() => onRun("value_counts")}
-              className="w-full bg-purple-600 hover:bg-purple-500 text-white p-2 rounded flex items-center gap-2"
-            >
-              <FiHash />
-              Frecuencias
-            </button>
-
-            <button
-              onClick={() => onRun("correlation")}
-              className="w-full bg-teal-600 hover:bg-teal-500 text-white p-2 rounded flex items-center gap-2"
-            >
-              <FiBarChart2 />
-              Correlación
-            </button>
-          </div>
         </>
       )}
 
-      {/* Modo colapsado */}
+      {/* Sidebar colapsado */}
       {collapsed && (
         <div className="flex flex-col items-center gap-4 mt-4">
           <button

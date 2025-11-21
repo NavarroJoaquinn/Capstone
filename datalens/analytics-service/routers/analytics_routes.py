@@ -184,19 +184,55 @@ async def value_counts(dataset_id: str, column: str, request: Request, user=Depe
         "value_counts": vc
     }
 
-@router.get("/correlation/{dataset_id}")
-async def correlation(dataset_id: str, request: Request, user=Depends(get_current_user)):
+@router.get("/histogram/{dataset_id}/{column}")
+async def histogram(dataset_id: str, column: str, request: Request, user=Depends(get_current_user)):
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     df = fetch_dataframe(dataset_id, token)
 
-    numeric_df = df.select_dtypes(include=["number"])
+    if column not in df.columns:
+        raise HTTPException(404, "Columna no encontrada")
 
-    if numeric_df.empty:
-        raise HTTPException(400, "No hay columnas numéricas para correlación")
+    col = pd.to_numeric(df[column], errors="coerce").dropna()
+    if col.empty:
+        raise HTTPException(400, "La columna no es numérica")
 
-    corr = numeric_df.corr().round(4).fillna(0).to_dict()
+    counts, bins = np.histogram(col, bins=10)
 
     return {
         "dataset_id": dataset_id,
-        "correlation_matrix": corr
+        "column": column,
+        "bins": bins.tolist(),
+        "counts": counts.tolist(),
+    }
+
+@router.get("/pie/{dataset_id}/{column}")
+async def pie(dataset_id: str, column: str, request: Request, user=Depends(get_current_user)):
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    df = fetch_dataframe(dataset_id, token)
+
+    if column not in df.columns:
+        raise HTTPException(404, "Columna no encontrada")
+
+    vc = df[column].value_counts().head(10)
+
+    return {
+        "labels": vc.index.tolist(),
+        "values": vc.values.tolist(),
+    }
+
+@router.get("/heatmap/{dataset_id}")
+async def heatmap(dataset_id: str, request: Request, user=Depends(get_current_user)):
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+
+    df = fetch_dataframe(dataset_id, token)
+    df_numeric = df.select_dtypes(include=[np.number])
+
+    if df_numeric.empty:
+        raise HTTPException(400, "No hay columnas numéricas para crear el heatmap")
+
+    corr = df_numeric.corr().round(3)
+
+    return {
+        "columns": corr.columns.tolist(),
+        "matrix": corr.values.tolist()
     }
