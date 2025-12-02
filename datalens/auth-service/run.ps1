@@ -18,6 +18,7 @@ if ($RecreateVenv -or -not (Test-Path ".venv")) {
 
 # Instalar dependencias
 python -m pip install --upgrade pip
+python -m pip install "pymongo[srv]==3.12"
 python -m pip install -r requirements.txt
 
 # Ejecutar el servicio

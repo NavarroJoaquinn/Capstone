@@ -45,6 +45,7 @@ if ($pyVersion -notlike "*3.12*") {
 
 Write-Host "Instalando dependencias..." -ForegroundColor Cyan
 python -m pip install --upgrade pip
+python -m pip install "pymongo[srv]==3.12"
 python -m pip install -r requirements.txt
 
 # ===============================================================

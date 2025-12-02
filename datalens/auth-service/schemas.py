@@ -21,7 +21,7 @@ class Token(BaseModel):
 class MeOut(BaseModel):
     id: str
     email: EmailStr
-    company_name: Optional[str] = None   # 👈 usar company_name
+    company_name: Optional[str] = None 
     role: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
