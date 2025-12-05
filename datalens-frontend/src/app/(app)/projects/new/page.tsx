@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { projectService } from "@/services/projectService";
 import { datasetService } from "@/services/datasetService";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
+
 
 export default function NewProjectPage() {
   const router = useRouter();
-
+  const toast = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [datasets, setDatasets] = useState<any[]>([]);
@@ -15,16 +17,19 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
 
   // Cargar datasets para seleccionar
-  useState(() => {
+  useEffect(() => {
     datasetService
       .list()
       .then((r) => setDatasets(r.data))
-      .catch((e) => console.error(e));
-  });
+      .catch((e) => console.error("Error cargando datasets:", e));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return alert("El nombre es obligatorio");
+    if (!name.trim()) {
+      toast.show("El nombre es obligatorio");
+      return;
+    }
 
     setLoading(true);
 
@@ -35,68 +40,107 @@ export default function NewProjectPage() {
         dataset_ids: selectedDatasets,
       });
 
-      alert("Proyecto creado con éxito!");
+      toast.show("Proyecto creado con éxito");
       router.push(`/projects/${res.data.id}`);
-
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      alert("Error creando el proyecto.");
+      toast.show("Error creando el proyecto.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-10 text-white">
-      <h1 className="text-3xl font-bold mb-6">Crear Nuevo Proyecto</h1>
+    <main className="min-h-screen bg-black text-white">
+      <div className="max-w-3xl mx-auto pt-16 pb-24 px-4">
+        {/* Título centrado */}
+        <header className="text-center mb-10">
+          <h1 className="text-3xl font-bold mb-2">Crear nuevo proyecto</h1>
+          <p className="text-sm text-gray-400">
+            Define el nombre, una breve descripción y los datasets que estarán
+            asociados a este proyecto.
+          </p>
+        </header>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        <div>
-          <label className="font-semibold">Nombre *</label>
-          <input
-            className="w-full mt-2 p-2 rounded bg-zinc-800 border border-zinc-700"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="font-semibold">Descripción (opcional)</label>
-          <textarea
-            className="w-full mt-2 p-2 rounded bg-zinc-800 border border-zinc-700"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="font-semibold">Datasets asociados</label>
-
-          <select
-            multiple
-            className="w-full mt-2 p-2 rounded bg-zinc-800 border border-zinc-700"
-            onChange={(e) =>
-              setSelectedDatasets(
-                Array.from(e.target.selectedOptions, (opt) => opt.value)
-              )
-            }
-          >
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-500 p-2 rounded mt-4"
+        {/* Card del formulario */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 sm:p-8 space-y-8"
         >
-          {loading ? "Creando..." : "Crear Proyecto"}
-        </button>
-      </form>
-    </div>
+          {/* Sección: información del proyecto */}
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Información del proyecto</h2>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1">
+                Nombre *
+              </label>
+              <input
+                className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: Proyecto Demo Ventas 2025"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1">
+                Descripción (opcional)
+              </label>
+              <textarea
+                className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[90px]"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe el objetivo del proyecto o las decisiones que quieres tomar."
+              />
+            </div>
+          </section>
+
+          {/* Sección: datasets asociados a tu cuenta */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">
+                Datasets asociados a tu cuenta
+              </h2>
+              <span className="text-xs text-gray-400">
+                {selectedDatasets.length > 0
+                  ? `${selectedDatasets.length} seleccionado(s)`
+                  : "Ningún dataset seleccionado"}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-400">
+              Elige uno o más datasets que quieras analizar dentro de este
+              proyecto. Puedes mantener presionada la tecla Ctrl (o Cmd en Mac)
+              para seleccionar varios.
+            </p>
+
+            <select
+              multiple
+              className="w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[140px]"
+              onChange={(e) =>
+                setSelectedDatasets(
+                  Array.from(e.target.selectedOptions, (opt) => opt.value)
+                )
+              }
+            >
+              {datasets.map((d) => (
+                <option key={d._id ?? d.id} value={d._id ?? d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </section>
+
+          {/* Botón crear proyecto */}
+          <button
+            disabled={loading}
+            className="w-full mt-4 inline-flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-60 px-4 py-2 text-sm font-semibold"
+          >
+            {loading ? "Creando..." : "Crear proyecto"}
+          </button>
+        </form>
+      </div>
+    </main>
   );
 }

@@ -1,107 +1,157 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { FaChevronDown } from "react-icons/fa";
-import { authService } from "@/services/authService";
+
+interface CurrentUser {
+  email: string;
+  name?: string;
+}
+
+// Helper para iniciales del avatar
+function getInitials(text: string) {
+  if (!text) return "?";
+  const cleaned = text.trim();
+  if (cleaned.includes(" ")) {
+    const parts = cleaned.split(" ").filter(Boolean);
+    return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+  }
+  // Si es correo, usamos la primera letra del antes del @
+  const beforeAt = cleaned.split("@")[0];
+  return (beforeAt[0] ?? "?").toUpperCase();
+}
 
 export default function Navbar() {
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
 
-  const [openMenu, setOpenMenu] = useState(false);
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const logout = () => {
-    localStorage.removeItem("token");
+  // Cargar usuario desde localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const storedUser = window.localStorage.getItem("datalens_user");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+        return;
+      }
+
+      const email = window.localStorage.getItem("datalens_email");
+      if (email) {
+        setUser({ email });
+      }
+    } catch (e) {
+      console.error("Error leyendo usuario desde localStorage", e);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("token");
+      window.localStorage.removeItem("datalens_user");
+      window.localStorage.removeItem("datalens_email");
+    }
     router.push("/login");
   };
 
-  // 🆕 Traer info del usuario al cargar
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  const displayName = user?.name || user?.email || "Usuario";
 
-    authService.me()
-      .then(res => {
-        // Puedes usar res.data.email o res.data.name si lo agregas en el futuro
-        setUser(res.data.email);
-      })
-      .catch(() => {
-        setUser(null);
-      });
-  }, []);
-
-  const navItems = [
-    { name: "Proyectos", href: "/projects" },
-    { name: "Analíticas", href: "/projects/analytics" },
-  ];
+  const isActive = (href: string) =>
+    pathname === href || pathname?.startsWith(href + "/");
 
   return (
-    <nav className="bg-[#003b2e] text-white px-8 py-4 flex items-center justify-between shadow-lg">
+    <nav className="w-full bg-emerald-950 text-white shadow-sm">
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+        {/* Marca: ahora botón que lleva al home */}
+        <Link href="/" className="flex items-center gap-2">
+          <span className="font-bold text-xl tracking-wide hover:text-emerald-200 transition">
+            Datalens Analytics
+          </span>
+        </Link>
 
-      <Link href="/" className="text-xl font-bold">
-        DataLens
-      </Link>
-
-      {/* Navegación */}
-      <div className="flex items-center gap-8 text-lg font-medium">
-        {navItems.map(item => (
+        {/* Links centro: un poco más grandes */}
+        <div className="hidden md:flex items-center gap-8 text-base">
           <Link
-            key={item.href}
-            href={item.href}
-            className={`hover:opacity-80 ${
-              pathname.startsWith(item.href)
-                ? "underline underline-offset-4"
+            href="/projects"
+            className={`hover:text-emerald-200 transition ${
+              isActive("/projects")
+                ? "border-b-2 border-emerald-300 pb-1"
                 : ""
             }`}
           >
-            {item.name}
+            Proyectos
           </Link>
-        ))}
-      </div>
 
-      {/* Perfil */}
-      <div className="relative">
-        <button
-          className="flex items-center gap-2 bg-[#004c3b] text-white px-3 py-1 rounded hover:bg-[#046b52] transition"
-          onClick={() => setOpenMenu(!openMenu)}
-        >
-          <img
-            src={`https://ui-avatars.com/api/?name=${user || "?"}&background=003b2e&color=fff`}
-            className="w-7 h-7 rounded-full"
-          />
-          {user || "Usuario"}
-          <FaChevronDown
-            className={`transition-transform ${openMenu ? "rotate-180" : ""}`}
-          />
-        </button>
+          <Link
+            href="/datasets"
+            className={`hover:text-emerald-200 transition ${
+              isActive("/datasets")
+                ? "border-b-2 border-emerald-300 pb-1"
+                : ""
+            }`}
+          >
+            Datasets
+          </Link>
 
-        {openMenu && (
-          <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-md text-blue-900 overflow-hidden z-50">
-            <button
-              onClick={() => router.push("/profile")}
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-            >
-              Perfil
-            </button>
+          <Link
+            href="/analytics"
+            className={`hover:text-emerald-200 transition ${
+              isActive("/analytics")
+                ? "border-b-2 border-emerald-300 pb-1"
+                : ""
+            }`}
+          >
+            Analíticas
+          </Link>
+        </div>
 
-            <button
-              onClick={() => router.push("/settings")}
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-            >
-              Configuración
-            </button>
+        {/* Menú usuario */}
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex items-center gap-2 bg-emerald-900 hover:bg-emerald-800 px-3 py-1.5 rounded-full text-sm"
+          >
+            <span className="flex items-center justify-center w-7 h-7 rounded-full bg-zinc-900 text-xs font-semibold">
+              {getInitials(displayName)}
+            </span>
+            <span>{displayName}</span>
+            <span className="text-xs">{menuOpen ? "▲" : "▼"}</span>
+          </button>
 
-            <button
-              onClick={logout}
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        )}
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-700 rounded-lg shadow-lg text-sm z-50">
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push("/profile");
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-zinc-800"
+              >
+                Perfil
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  router.push("/settings");
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-zinc-800"
+              >
+                Configuración
+              </button>
+              <hr className="border-zinc-800" />
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-red-400 hover:bg-zinc-800"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </nav>
   );

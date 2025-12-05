@@ -17,16 +17,19 @@ export default function HomePage() {
       <div className="w-full max-w-7xl px-8 py-12">
 
         {/* Encabezado */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold mb-2">Hola, Usuario 👋</h1>
-          <p className="text-gray-400 text-lg">
-            Bienvenido a DataLens. ¿Qué quieres hacer hoy?
-          </p>
-        </div>
+        <h2 className="text-xl font-semibold text-center mb-4">
+          <div className="mb-12">
+            <h1 className="text-4xl font-bold mb-2">Hola!👋</h1>
+
+            <p className="text-gray-400 text-lg">
+              Bienvenido a DataLens. ¿Qué quieres hacer hoy?
+            </p>
+          </div>
+        </h2>
 
         {/* Tarjetas de opciones */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          
+
           {/* Proyectos */}
           <div
             onClick={() => router.push("/projects")}

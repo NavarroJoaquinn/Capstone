@@ -12,12 +12,36 @@ interface PlotPayload {
 }
 
 interface Props {
-  type: string | null;
+  type: "histogram" | "piechart" | "heatmap" | null;
   data: PlotPayload | null;
 }
 
 export default function PlotView({ type, data }: Props) {
-  if (!data) return null;
+  const hasDataArray =
+    data && Array.isArray(data.data) && data.data.length > 0;
+
+  // Si no hay trazas para plotear, mostramos un aviso en vez de dejar el área vacía
+  if (!hasDataArray) {
+    return (
+      <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-700 mt-10">
+        {type && (
+          <h2 className="text-xl font-semibold mb-4">
+            Visualización:{" "}
+            <span className="text-blue-400">
+              {type === "histogram" && "Histograma"}
+              {type === "piechart" && "Gráfico de Torta"}
+              {type === "heatmap" && "Heatmap de Correlación"}
+            </span>
+          </h2>
+        )}
+
+        <p className="text-gray-300">
+          No hay datos suficientes para generar esta visualización. Verifica las
+          columnas seleccionadas o prueba con otro tipo de gráfico.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-700 mt-10">
